@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - StockSense{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background: #0B0F19 !important;
+        /* Dark blue/black background */
+        font-family: 'Inter', sans-serif;
+        margin: 0;
+        overflow-x: hidden;
+    }
+
+    .gradient-text {
+        background: linear-gradient(90deg, #A881FF 0%, #D882FF 50%, #FF82D1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .glass-nav {
+        background: rgba(11, 15, 25, 0.8);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .primary-btn {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+        transition: all 0.3s ease;
+    }
+
+    .primary-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.23);
+    }
+
+    /* Fix: Missing animation used by hero glass card */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(32px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in-up {
+        animation: fadeInUp 0.8s ease both;
+    }
+</style>
+
+<!-- Navbar -->
+<nav class="fixed top-0 w-full z-50 glass-nav px-6 py-4 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white font-bold text-lg">
+            S
+        </div>
+        <span class="text-white font-bold text-xl tracking-wide">STOCKSENSE</span>
+    </div>
+    <div class="flex items-center space-x-4">
+        <a href="{{ url_for('auth.login') }}" class="primary-btn text-white px-6 py-2 rounded-lg font-medium">Login</a>
+        <a href="{{ url_for('auth.register') }}"
+            class="bg-white/5 border border-white/10 text-white hover:bg-white/10 px-6 py-2 rounded-lg font-medium transition-all">Register</a>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<div class="min-h-screen flex flex-col justify-center items-center px-4 pt-20 relative overflow-hidden">
+    <!-- Subtle background glows -->
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none">
+    </div>
+
+    <!-- Spline 3D Trolley Element -->
+    <div class="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+        <!-- Using a known working Spline shopping cart/trolley url -->
+        <spline-viewer url="https://prod.spline.design/qE6v6-uX7d0NfE8t/scene.splinecode"
+            class="w-full h-full scale-110 md:scale-125 opacity-40"></spline-viewer>
+    </div>
+
+    <!-- Glass Container for Text -->
+    <div
+        class="glass p-10 md:p-16 rounded-3xl text-center max-w-5xl z-10 space-y-8 animate-fade-in-up relative shadow-2xl">
+
+        <div class="inline-block mx-auto mb-4">
+
+        </div>
+
+        <h1 class="text-6xl md:text-8xl font-black tracking-tight leading-tight drop-shadow-2xl">
+            <span class="text-indigo-400">Intelligent</span> <span class="text-purple-400">Inventory</span><br />
+            <span class="gradient-text">Management Engine</span>
+        </h1>
+
+        <p class="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mt-6 font-medium">
+            Automatically track stock levels, manage messy point-of-sale data, and generate intelligent purchase
+            forecasts using our advanced AI engine.
+        </p>
+
+        <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 mt-10">
+            <a href="{{ url_for('auth.login') }}"
+                class="primary-btn text-white px-8 py-4 rounded-xl font-bold text-lg flex items-center group w-full sm:w-auto justify-center shadow-indigo-500/50">
+                Start Application
+                <svg class="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3">
+                    </path>
+                </svg>
+            </a>
+
+            <button onclick="document.getElementById('aboutModal').classList.remove('hidden')"
+                class="bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:border-white/30 px-8 py-4 rounded-xl font-bold text-lg transition-all w-full sm:w-auto shadow-lg backdrop-blur-md">
+                Learn More
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Learn More Modal -->
+<div id="aboutModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+    <div class="glass p-8 rounded-3xl max-w-md w-full border border-white/10 mx-4 shadow-2xl">
+        <h3 class="text-2xl font-bold text-sky-400 mb-4">About StockSense</h3>
+        <p class="text-gray-300 mb-6">StockSense is an Intelligent Inventory Management System designed to streamline
+            POS operations, track existing stock intelligently, and generate automated low-stock alerts and purchase
+            forecasts.</p>
+        <button onclick="document.getElementById('aboutModal').classList.add('hidden')"
+            class="w-full py-3 border border-white/20 bg-white/10 hover:bg-white/20 rounded-xl text-white font-bold transition-colors shadow-lg shadow-white/5">Close</button>
+    </div>
+</div>
+
+{% endblock %}

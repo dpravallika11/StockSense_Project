@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}Point of Sale - StockSense{% endblock %}
+
+{% block content %}
+<div class="h-screen flex flex-col">
+    <!-- Navbar -->
+    <header class="glass-header text-white z-20 sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <h1 class="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-cyan-100 drop-shadow-md">StockSense POS - {{ session.get('store_name') }}</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm">Cashier: {{ session.get('username') }}</span>
+                {% if session.get('role') == 'Admin' %}
+                <a href="{{ url_for('dashboard.index') }}" class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-800 rounded text-sm font-medium transition-colors">Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}" class="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded text-sm font-medium transition-colors">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Section: Search & Products -->
+        <div class="w-2/3 flex flex-col glass rounded-r-3xl my-4 ml-4 mr-2 overflow-hidden shadow-2xl relative z-10 border-r-0">
+            <div class="p-5 border-b border-white/10 bg-black/20 backdrop-blur-md">
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Search product by name or barcode (e.g. 111111)..." class="glass-input w-full pl-12 pr-4 py-4 rounded-xl text-white placeholder-gray-400 font-medium text-lg focus:ring-2 focus:ring-cyan-400 shadow-inner">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 bg-transparent">
+                <div id="searchResults" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Search results injected here via JS -->
+                     <div class="col-span-full h-full flex flex-col items-center justify-center text-gray-400 pt-20">
+                         <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                         <p>Search for a product to add it to the cart.</p>
+                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Section: Cart -->
+        <div class="w-1/3 flex flex-col glass rounded-l-3xl my-4 ml-2 mr-4 overflow-hidden shadow-2xl relative z-10">
+            <div class="p-5 border-b border-white/10 bg-black/20 backdrop-blur-md flex justify-between items-center shadow-sm">
+                <h2 class="text-xl font-bold text-white drop-shadow-md">Current Order</h2>
+                <button id="clearCartBtn" class="text-sm text-red-500 hover:text-red-400 font-medium transition-colors">Clear Cart</button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <ul id="cartItemsList" class="divide-y divide-white/10">
+                    <!-- Cart items injected here -->
+                </ul>
+            </div>
+            
+            <div class="p-6 border-t border-white/10 bg-black/30 backdrop-blur-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-gray-300 font-medium text-lg">Subtotal</span>
+                    <span class="text-xl font-bold text-white" id="cartSubtotal">₹0.00</span>
+                </div>
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-gray-300 font-medium text-lg">Tax (0%)</span>
+                    <span class="text-xl font-bold text-gray-400">₹0.00</span>
+                </div>
+                <div class="flex justify-between items-center mb-6 pt-4 border-t border-white/10">
+                    <span class="text-2xl font-extrabold text-white">Total</span>
+                    <span class="text-3xl font-extrabold text-cyan-300 drop-shadow-md" id="cartTotal">₹0.00</span>
+                </div>
+                <button id="checkoutBtn" class="w-full bg-cyan-600/80 hover:bg-cyan-500/90 text-white font-bold py-4 px-4 rounded-xl border border-cyan-400/50 shadow-xl shadow-cyan-500/30 transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none backdrop-blur-md">
+                    Process Payment
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Scripts -->
+<script>
+    let cart = [];
+
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const cartItemsList = document.getElementById('cartItemsList');
+    const cartSubtotal = document.getElementById('cartSubtotal');
+    const cartTotal = document.getElementById('cartTotal');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const clearCartBtn = document.getElementById('clearCartBtn');
+
+    // Debounce function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Search API call
+    const performSearch = async (query = '') => {
+        try {
+            const response = await fetch(`/pos/api/search?q=${encodeURIComponent(query)}`);
+            const products = await response.json();
+            
+            if (products.length === 0) {
+                searchResults.innerHTML = `<div class="col-span-full text-center py-8 text-gray-500">No products found for "${query}"</div>`;
+                return;
+            }
+
+            searchResults.innerHTML = products.map(p => `
+                <div class="glass rounded-2xl p-5 hover:bg-white/10 border-white/10 hover:border-cyan-400/50 transition-all cursor-pointer flex flex-col items-center text-center transform hover:-translate-y-1 ${p.current_stock <= 0 ? 'opacity-50 grayscale' : ''}" onclick="addToCart('${p._id}', '${p.name}', ${p.price}, ${p.current_stock})">
+                    <div class="w-16 h-16 bg-cyan-500/20 border border-cyan-400/50 rounded-full flex items-center justify-center text-cyan-300 font-bold text-2xl mb-4 shadow-lg">
+                        ${p.name.charAt(0)}
+                    </div>
+                    <h3 class="font-bold text-white leading-tight mb-2">${p.name}</h3>
+                    <p class="text-cyan-300 font-extrabold mb-3 text-lg break-all">₹${p.price.toFixed(2)}</p>
+                    <div class="text-xs ${p.current_stock > 10 ? 'text-green-300 border-green-400/50 bg-green-500/20' : (p.current_stock > 0 ? 'text-orange-300 border-orange-400/50 bg-orange-500/20' : 'text-red-300 border-red-400/50 bg-red-500/20')} font-bold border px-3 py-1.5 rounded-full shadow-sm backdrop-blur-md">
+                        Stock: ${p.current_stock}
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error("Search error:", error);
+            searchResults.innerHTML = `<div class="col-span-full text-center py-8 text-red-500">Error loading products.</div>`;
+        }
+    };
+
+    searchInput.addEventListener('input', debounce((e) => performSearch(e.target.value), 300));
+
+    // Cart Functions
+    window.addToCart = (id, name, price, stock) => {
+        if (stock <= 0) {
+            alert("Out of stock!");
+            return;
+        }
+        
+        const existingItem = cart.find(item => item.product_id === id);
+        if (existingItem) {
+            if (existingItem.quantity < stock) {
+                existingItem.quantity += 1;
+            } else {
+                alert("Cannot add more than available stock.");
+            }
+        } else {
+            cart.push({ product_id: id, name, price, quantity: 1, stock });
+        }
+        updateCartUI();
+    };
+
+    window.updateQty = (id, change) => {
+        const itemIndex = cart.findIndex(item => item.product_id === id);
+        if (itemIndex > -1) {
+            const item = cart[itemIndex];
+            const newQty = item.quantity + change;
+            
+            if (newQty > item.stock) {
+                 alert("Cannot exceed available stock.");
+                 return;
+            }
+            
+            if (newQty <= 0) {
+                cart.splice(itemIndex, 1);
+            } else {
+                item.quantity = newQty;
+            }
+            updateCartUI();
+        }
+    };
+
+    const updateCartUI = () => {
+        if (cart.length === 0) {
+            cartItemsList.innerHTML = `
+                <li class="py-8 text-center text-gray-400">
+                    <p>Cart is empty</p>
+                </li>`;
+            cartTotal.textContent = "₹0.00";
+            cartSubtotal.textContent = "₹0.00";
+            checkoutBtn.disabled = true;
+            return;
+        }
+
+        checkoutBtn.disabled = false;
+        let total = 0;
+
+        cartItemsList.innerHTML = cart.map(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            return `
+                <li class="py-5 flex justify-between items-center pr-2">
+                    <div class="flex-1">
+                        <h4 class="text-base font-bold text-white mb-1">${item.name}</h4>
+                        <p class="text-sm text-cyan-200">₹${item.price.toFixed(2)}</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center border border-white/20 rounded-lg bg-black/40 shadow-inner overflow-hidden">
+                            <button onclick="updateQty('${item.product_id}', -1)" class="px-3 py-1.5 text-gray-300 hover:bg-white/20 hover:text-white transition-colors">-</button>
+                            <span class="px-3 py-1.5 text-sm font-bold w-10 text-center border-l border-r border-white/20 text-white bg-white/5">${item.quantity}</span>
+                            <button onclick="updateQty('${item.product_id}', 1)" class="px-3 py-1.5 text-gray-300 hover:bg-white/20 hover:text-white transition-colors">+</button>
+                        </div>
+                        <span class="text-base font-bold w-16 text-right text-cyan-300 drop-shadow-sm">₹${itemTotal.toFixed(2)}</span>
+                    </div>
+                </li>
+            `;
+        }).join('');
+
+        cartTotal.textContent = `₹${total.toFixed(2)}`;
+        cartSubtotal.textContent = `₹${total.toFixed(2)}`;
+    };
+
+    clearCartBtn.addEventListener('click', () => {
+        cart = [];
+        updateCartUI();
+    });
+
+    // Checkout Handling
+    checkoutBtn.addEventListener('click', async () => {
+        if (cart.length === 0) return;
+        
+        checkoutBtn.disabled = true;
+        checkoutBtn.textContent = 'Processing...';
+        
+        try {
+            const response = await fetch('/pos/api/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cart })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Generate and show Bill Modal
+                const billDate = new Date().toLocaleString();
+                let billHTML = `
+                    <div class="text-center mb-4 border-b border-gray-600 pb-4">
+                        <h2 class="text-2xl font-bold text-white">StockSense</h2>
+                        <p class="text-sm text-gray-400">Tax Invoice / Bill</p>
+                        <p class="text-xs text-gray-500">${billDate}</p>
+                        <p class="text-xs text-gray-500">Cashier: {{ session.get('username') }}</p>
+                    </div>
+                    <table class="w-full text-left text-sm text-gray-300 mb-4">
+                        <thead>
+                            <tr class="border-b border-gray-600">
+                                <th class="pb-2">Item</th>
+                                <th class="pb-2 text-center">Qty</th>
+                                <th class="pb-2 text-right">Price</th>
+                                <th class="pb-2 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                let billTotal = 0;
+                cart.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+                    billTotal += itemTotal;
+                    billHTML += `
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">${item.name}</td>
+                            <td class="py-2 text-center">${item.quantity}</td>
+                            <td class="py-2 text-right">₹${item.price.toFixed(2)}</td>
+                            <td class="py-2 text-right">₹${itemTotal.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+                billHTML += `
+                        </tbody>
+                    </table>
+                    <div class="flex justify-between items-center pt-2 font-bold text-lg text-white">
+                        <span>Grand Total:</span>
+                        <span>₹${billTotal.toFixed(2)}</span>
+                    </div>
+                `;
+                
+                document.getElementById('billContent').innerHTML = billHTML;
+                document.getElementById('billModal').classList.remove('hidden');
+
+                cart = [];
+                updateCartUI();
+                searchInput.value = '';
+                performSearch(''); // reload all products
+            } else {
+                alert("Error: " + result.error);
+            }
+        } catch (error) {
+            console.error("Checkout error:", error);
+            alert("Checkout failed. Please try again.");
+        } finally {
+            checkoutBtn.disabled = false;
+            checkoutBtn.textContent = 'Process Payment';
+        }
+    });
+
+    // Initialize UI
+    updateCartUI();
+    performSearch(''); // Load all products initially
+</script>
+
+<!-- Bill Modal -->
+<div id="billModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+    <div class="glass p-8 rounded-3xl max-w-sm w-full border border-white/10 mx-4 shadow-2xl bg-black/90">
+        <div id="billContent" class="mb-6 print-container">
+            <!-- Bill details injected here -->
+        </div>
+        <div class="flex space-x-4 no-print">
+            <button onclick="window.print()" class="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-white font-bold transition-colors shadow-lg">Print</button>
+            <button onclick="document.getElementById('billModal').classList.add('hidden')" class="flex-1 py-3 border border-white/20 bg-white/10 hover:bg-white/20 rounded-xl text-white font-bold transition-colors">Close</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #billModal, #billModal * {
+            visibility: visible;
+        }
+        #billModal {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: white !important;
+            color: black !important;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        .glass {
+            background: white !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: black !important;
+            width: 80mm; /* typical receipt width */
+            padding: 0;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .text-white, .text-gray-300, .text-gray-400, .text-gray-500 {
+            color: black !important;
+        }
+        .border-gray-600, .border-gray-700\/50 {
+            border-color: black !important;
+        }
+    }
+</style>
+
+{% endblock %}
